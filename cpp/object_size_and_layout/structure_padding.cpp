@@ -29,6 +29,7 @@ struct OrderedStr {
 };
 
 int main() {
+    std::cout << "compile with -Wpadded to view warnings\n";
     std::cout << "all units are represented in bytes\n";
     std::cout << "I am naively ordering by size of members\n";
     std::cout << "Ordered      = " << sizeof(Ordered) << '\n';
