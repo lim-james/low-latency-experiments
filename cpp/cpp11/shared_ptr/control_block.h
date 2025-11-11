@@ -2,10 +2,10 @@
 #define CONTROL_BLOCK
 
 #include <stddef.h>
+#include <atomic>
 
 struct control_block {
-    size_t strong_count;
-    size_t weak_count;
+    std::atomic<size_t> strong_count;
 };
 
 #endif
