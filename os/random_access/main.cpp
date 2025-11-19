@@ -5,6 +5,9 @@
 #include <functional>
 #include <algorithm>
 #include <unistd.h>
+#include <array>
+
+const size_t CACHE_LINE_SIZE = 128;
 
 class ScopeTimer {
 private:
@@ -40,7 +43,7 @@ public:
 void flush() {
     const size_t BUFFER_SIZE = 256 * 1024 * 1024;  
     char* buffer = new char[BUFFER_SIZE];
-    for (size_t i = 0; i < BUFFER_SIZE; ++i) 
+    for (size_t i = 0; i < BUFFER_SIZE; i += CACHE_LINE_SIZE) 
         buffer[i] = 'a';
     delete[] buffer;
 }
@@ -91,11 +94,11 @@ benchmark_times benchmark(const std::function<void()>& fn, size_t iterations) {
 
 
 void process_main(
+    size_t buffer_size_mb,
     unsigned char id, 
     unsigned char process_max_exponent
 ) {
-    const size_t CACHE_LINE_SIZE = 128;
-    const size_t BUFFER_SIZE = 16 * 1024 * 1024;  
+    const size_t BUFFER_SIZE = buffer_size_mb * 1024 * 1024;  
     char* buffer = static_cast<char*>(aligned_alloc(CACHE_LINE_SIZE, BUFFER_SIZE));
 
     for (unsigned char i = 0; i < process_max_exponent; ++i) {
@@ -135,7 +138,7 @@ void process_main(
 }
 
 
-int main() {
+void buffered_main(size_t buffer_size_mb) {
     std::cout << std::left
               << std::setw(8) << ""
               << " | "
@@ -160,9 +163,9 @@ int main() {
               << std::setw(8) << "DIFF"
               << '\n';
 
-    const unsigned char MAX_EXPONENT = 24;
-    const unsigned char PROCESS_COUNT = 8;
-    const unsigned char PROCESS_MAX_EXPONENT = MAX_EXPONENT / PROCESS_COUNT;
+    static const unsigned char MAX_EXPONENT = 24;
+    static const unsigned char PROCESS_COUNT = 8;
+    static const unsigned char PROCESS_MAX_EXPONENT = MAX_EXPONENT / PROCESS_COUNT;
 
     pid_t pid;
 
@@ -170,15 +173,25 @@ int main() {
         pid = fork();
 
         if (pid == 0) {
-            process_main(i, PROCESS_MAX_EXPONENT);
+            process_main(buffer_size_mb, i, PROCESS_MAX_EXPONENT);
             _exit(0);
         }
     }
 
-    process_main(0, PROCESS_MAX_EXPONENT);
+    process_main(buffer_size_mb, 0, PROCESS_MAX_EXPONENT);
 
     for (unsigned char i = 1; i < PROCESS_COUNT; ++i) 
         wait(nullptr);
+}
+
+
+int main() {
+    std::array<size_t, 3> buffer_sizes{16,32,64};
+
+    for (auto b: buffer_sizes) {
+        std::cout << "\n\n>>> TESTING BUFFER SIZE OF " << b << "MB\n";
+        buffered_main(b);
+    }
 
     return 0;
 }
