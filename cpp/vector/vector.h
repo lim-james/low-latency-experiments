@@ -15,27 +15,23 @@ private:
     std::size_t size_     = 0;
     std::size_t capacity_ = 0;
 
-    void delete_managed_ptr() {
-        if (managed_ptr_ == nullptr)
-            return;
-        ::operator delete[](managed_ptr_);
-    }
-
 public:
 
-    vector() {
-        reserve(1); 
-    }
+    vector() {}
 
-    vector(std::size_t size) : size_(size) {
-        reserve(size);
-        for (size_t i = 0; i < size_; ++i) {
-            managed_ptr_[i] = T{};
-        }
+    vector(std::size_t size) : size_(size), capacity_(size) {
+        managed_ptr_ = new T[size_];
     }
 
     ~vector() {
-        delete_managed_ptr();
+        std::println("time to cleanup...");
+        if (managed_ptr_ == nullptr)
+            return;
+
+        for (size_t i = 0; i < size_; ++i) 
+            managed_ptr_[i].~T();
+
+        ::operator delete[](managed_ptr_);
     }
 
     vector(const vector& to_be_copied) {
@@ -55,6 +51,7 @@ public:
         if (desired_capacity == 0 || capacity_ >= desired_capacity)
             return;
 
+        std::size_t old_capacity_ = capacity_;
         capacity_ = desired_capacity;
 
         T* new_mem_space = static_cast<T*>(::operator new[](sizeof(T) * capacity_));
@@ -63,18 +60,31 @@ public:
             new_mem_space[i] = std::move(managed_ptr_[i]);
         std::println("completed move...");
 
-        delete_managed_ptr();
+        if (managed_ptr_ != nullptr && old_capacity_ > 0)
+            ::operator delete[](managed_ptr_, sizeof(T) * old_capacity_);
         managed_ptr_ = new_mem_space;
     }
-void push_back(const T& value) {
+
+    void push_back(const T& value) {
         std::println(".push_back()...");
         if (size_ == capacity_) {
             expand_capacity();
         }
 
-        managed_ptr_[size_] = value;
+        new(managed_ptr_ + size_) T{value};
         size_++;
     }
+
+    void push_back(T&& value) {
+        std::println(".push_back()...");
+        if (size_ == capacity_) {
+            expand_capacity();
+        }
+
+        new(managed_ptr_ + size_) T{std::move(value)};
+        size_++;
+    }
+
 
     template<typename ...Args>
     void emplace_back(Args&&... args) {
@@ -93,8 +103,9 @@ void push_back(const T& value) {
         }
 
         --size_;
+        managed_ptr_[at].~T();
         for (std::size_t i = at; i < size_; ++i) {
-            managed_ptr_[i] = managed_ptr_[i+1];
+            managed_ptr_[i] = std::move(managed_ptr_[i+1]);
         }
     }
 
@@ -121,6 +132,8 @@ private:
             throw std::runtime_error("VECTOR HIT MAX CAPACITY");
         } else if (capacity_ >= SIZE_MAX >> 1) {
             reserve(SIZE_MAX);
+        } else if (capacity_ == 0) {
+            reserve(1);
         } else {
             reserve(capacity_ << 1);
         }

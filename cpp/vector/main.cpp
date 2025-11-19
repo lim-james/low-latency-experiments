@@ -76,14 +76,23 @@ int main() {
         v.emplace_back(i);
     }
 
-    for (int i = 5; i < 15; ++i) {
-        v.push_back(i);
+    for (int i = 5; i < 10; ++i) {
+        v.push_back(MemAudit<int>{i});
     }
     
     std::println("running tests...");
     for (int i = 0; i < v.size(); ++i) {
         assert(i == v[i].get());
     }
+
+    std::size_t original_size = v.size();
+    v.erase(5);  
+    assert(v.size() == original_size - 1);
+
+    for (int i = 5; i < v.size(); ++i) {
+        assert(i + 1 == v[i].get());
+    }
+
     std::println("looks good! goodbye...");
 
     return 0;
