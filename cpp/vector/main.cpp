@@ -59,12 +59,8 @@ public:
 
 
 template<typename T> std::size_t MemAudit<T>::instance_count = 0;
-
-template<typename T>
-std::size_t MemAudit<T>::copy_count = 0;
-
-template<typename T>
-std::size_t MemAudit<T>::move_count = 0;
+template<typename T> std::size_t MemAudit<T>::copy_count = 0;
+template<typename T> std::size_t MemAudit<T>::move_count = 0;
 
 
 int main() {
