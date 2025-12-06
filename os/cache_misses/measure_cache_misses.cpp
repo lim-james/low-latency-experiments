@@ -81,7 +81,6 @@ public:
 
         return PerfEvent(fd, result);
     }
-
 };
 
 int main(int argsc, char** argsv) {
